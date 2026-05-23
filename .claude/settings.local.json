@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(Get-ChildItem -Recurse \"C:\\\\Users\\\\Fawzy\\\\Desktop\\\\frontend\\\\cosmos-space\")",
-      "Bash(Select-Object FullName)",
-      "Bash(Sort-Object FullName)"
-    ]
-  }
-}

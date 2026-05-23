@@ -20,7 +20,10 @@ const PLANET_IMAGES = {
   neptune: './images/neptune.png',
 };
 
-const PLANET_ORDER = ['Mercury', 'Venus', 'Earth', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune'];
+const PLANET_ORDER = [
+  'Mercury', 'Venus', 'Earth', 'Mars',
+  'Jupiter', 'Saturn', 'Uranus', 'Neptune',
+];
 
 const PLANET_COLORS = {
   Mercury: '#eab308',
@@ -44,16 +47,6 @@ function today() {
   return new Date().toISOString().split('T')[0];
 }
 
-function formatDate(isoString) {
-  if (!isoString) return 'TBD';
-  try {
-    return new Date(isoString).toLocaleDateString('en-US', {
-      year: 'numeric', month: 'short', day: 'numeric',
-      hour: '2-digit', minute: '2-digit',
-    });
-  } catch { return isoString; }
-}
-
 function formatDateShort(isoString) {
   if (!isoString) return 'TBD';
   try {
@@ -63,15 +56,15 @@ function formatDateShort(isoString) {
   } catch { return isoString; }
 }
 
-// Returns an HTML string: "5.97 × 10^24 kg" with a <sup> exponent
+// Returns an HTML string with a superscript exponent
 function formatMass(massObj) {
   if (!massObj) return 'N/A';
   return `${massObj.massValue} &times; 10<sup>${massObj.massExponent}</sup> kg`;
 }
 
-function formatNumber(n, unit = '') {
+function formatNumber(n) {
   if (n == null) return 'N/A';
-  return `${Number(n).toLocaleString()}${unit ? ' ' + unit : ''}`;
+  return Number(n).toLocaleString();
 }
 
 function kmToAU(km) {
@@ -88,16 +81,91 @@ function getPlanetImage(name) {
   return PLANET_IMAGES[name.toLowerCase()] || './images/earth.png';
 }
 
+function formatOrbitalPeriod(days) {
+  if (!days) return 'N/A';
+  const d = Math.abs(days);
+  return d >= 365 ? `${(d / 365.25).toFixed(1)} years` : `${d.toFixed(0)} days`;
+}
+
+// Ratio relative to Earth mass
+const EARTH_MASS_KG = 5.972e24;
+function getMassRatio(massObj) {
+  if (!massObj) return 'N/A';
+  const kg = massObj.massValue * Math.pow(10, massObj.massExponent);
+  return (kg / EARTH_MASS_KG).toFixed(3);
+}
+
+// ---- Inline-style badge helpers (avoids relying on uncompiled Tailwind classes) ----
+
+/**
+ * Returns { style, label } for a launch status badge.
+ * Uses inline styles so colours work regardless of which Tailwind classes
+ * were included in the pre-compiled style.css.
+ */
+function getStatusBadge(statusName) {
+  const unknown = {
+    style: 'background:rgba(100,116,139,0.18);color:#94a3b8;border:1px solid rgba(100,116,139,0.35)',
+    label: 'Unknown',
+  };
+  if (!statusName) return unknown;
+
+  const s = statusName.toLowerCase();
+
+  if (s === 'go' || s.includes('go for'))
+    return {
+      style: 'background:rgba(34,197,94,0.18);color:#4ade80;border:1px solid rgba(34,197,94,0.4)',
+      label: statusName,
+    };
+  if (s.includes('success'))
+    return {
+      style: 'background:rgba(59,130,246,0.18);color:#60a5fa;border:1px solid rgba(59,130,246,0.4)',
+      label: statusName,
+    };
+  if (s.includes('hold') || s.includes('tbd') || s.includes('tbc') || s.includes('to be'))
+    return {
+      style: 'background:rgba(234,179,8,0.18);color:#facc15;border:1px solid rgba(234,179,8,0.4)',
+      label: statusName,
+    };
+  if (s.includes('fail') || s.includes('partial'))
+    return {
+      style: 'background:rgba(239,68,68,0.18);color:#f87171;border:1px solid rgba(239,68,68,0.4)',
+      label: statusName,
+    };
+
+  return { ...unknown, label: statusName };
+}
+
+/**
+ * Returns an inline style string for the planet-type pill.
+ * Orange = Terrestrial, Purple = Gas Giant, Cyan = Ice Giant.
+ */
+function getPlanetTypePillStyle(type) {
+  switch (type) {
+    case 'Terrestrial':
+      return 'background:rgba(249,115,22,0.35);color:#fed7aa';   // orange
+    case 'Gas Giant':
+      return 'background:rgba(168,85,247,0.35);color:#e9d5ff';   // purple
+    case 'Ice Giant':
+      return 'background:rgba(6,182,212,0.35);color:#a5f3fc';    // cyan
+    default:
+      return 'background:rgba(100,116,139,0.35);color:#cbd5e1';
+  }
+}
+
+// =============================================================================
+// PLANET CONTENT
+// =============================================================================
+
 function getPlanetDescription(name) {
   const d = {
     Mercury: 'Mercury is the smallest planet in the Solar System and the closest to the Sun. Its heavily cratered surface experiences extreme temperature swings — from −180 °C at night to 430 °C during the day — the widest range of any planet.',
-    Venus:   'Venus is the second planet from the Sun and the hottest world in the Solar System, with surface temperatures reaching 465 °C. A runaway greenhouse effect driven by a dense CO₂ atmosphere traps more heat than even Mercury receives.',
+    Venus:   'Venus is the second planet from the Sun and the hottest world in the Solar System, with surface temperatures reaching 465 °C. A runaway greenhouse effect driven by a dense CO₂ atmosphere traps more heat than Mercury receives.',
     Earth:   'Earth is the third planet from the Sun and the only known world to harbour life. About 71 % of its surface is covered by liquid water, and a protective magnetic field combined with an oxygen-rich atmosphere sustain the biosphere.',
-    Mars:    'Mars is the fourth planet, nicknamed the "Red Planet" for its iron-oxide surface. It hosts Olympus Mons — the tallest volcano in the Solar System — and ancient river valleys suggesting liquid water once flowed across its surface.',
-    Jupiter: 'Jupiter is the largest planet in the Solar System, a gas giant whose iconic cloud bands and centuries-old Great Red Spot storm are iconic. It acts as a gravitational shield for the inner Solar System and has at least 95 known moons.',
-    Saturn:  'Saturn is the sixth planet, famous for its spectacular ring system made of ice and rock. It is the least dense planet in the Solar System — less dense than water — and has 146 confirmed moons, including the atmosphere-rich Titan.',
-    Uranus:  'Uranus is the seventh planet, an ice giant rotating nearly on its side with an axial tilt of 98°. Methane in its atmosphere absorbs red light, giving it a distinctive blue-green hue. It has 27 known moons and 13 rings.',
-    Neptune: 'Neptune is the eighth and farthest known planet, an ice giant with the strongest winds in the Solar System — reaching 2 100 km/h. Its large storm system and retrograde-orbiting moon Triton make it one of the most dynamic worlds we know.',
+    Mars:    'Mars is the fourth planet, nicknamed the "Red Planet" for its iron-oxide surface. It hosts Olympus Mons — the tallest volcano in the Solar System — and ancient river valleys that suggest liquid water once flowed here.',
+    Jupiter: 'Jupiter is the largest planet in the Solar System, a gas giant whose iconic cloud bands and centuries-old Great Red Spot storm are iconic. It has at least 95 known moons and acts as a gravitational shield for the inner planets.',
+    Saturn:  'Saturn is the sixth planet, famous for its spectacular ring system made of ice and rock. It is the least dense planet in the Solar System and has 146 confirmed moons, including the atmosphere-rich Titan.',
+    Uranus:  'Uranus is the seventh planet, an ice giant rotating nearly on its side with an axial tilt of 98 °. Methane absorbs red light and gives it a distinctive blue-green hue. It has 27 known moons and 13 rings.',
+    Neptune: 'Neptune is the eighth and farthest known planet, an ice giant with the strongest winds in the Solar System — reaching 2 100 km/h. Its retrograde-orbiting moon Triton makes it one of the most dynamic worlds we know.',
   };
   return d[name] || `${name} is a fascinating body in our Solar System.`;
 }
@@ -110,48 +178,24 @@ function getPlanetFacts(name) {
     Mars:    ['Home to Olympus Mons, the tallest volcano in the Solar System', 'Has two small moons: Phobos and Deimos', 'Evidence of ancient liquid-water channels', 'Global dust storms can engulf the entire planet'],
     Jupiter: ['Largest planet — over 1 300 Earths fit inside', 'Great Red Spot storm has raged for over 400 years', 'Has at least 95 confirmed moons', 'Moon Ganymede is larger than the planet Mercury'],
     Saturn:  ['Ring system spans 282 000 km but is only ~10 m thick', 'Less dense than liquid water', 'Has 146 confirmed moons', 'Moon Titan has a thick nitrogen atmosphere and methane lakes'],
-    Uranus:  ['Tilted 98° — it rolls around the Sun on its side', 'Coldest planetary atmosphere in the Solar System: −224 °C', '27 moons named after Shakespeare characters', 'Has 13 known rings'],
+    Uranus:  ['Tilted 98° — it rolls around the Sun on its side', 'Coldest planetary atmosphere: −224 °C', '27 moons named after Shakespeare characters', 'Has 13 known rings'],
     Neptune: ['Strongest winds of any planet: up to 2 100 km/h', 'Takes 165 Earth years to orbit the Sun once', 'Has 16 known moons', 'Moon Triton orbits in the reverse (retrograde) direction'],
   };
   return f[name] || ['A fascinating world in our Solar System'];
 }
 
-// Ratio relative to Earth's mass (5.972 × 10^24 kg)
-const EARTH_MASS_KG = 5.972e24;
+// =============================================================================
+// DOM HELPERS
+// =============================================================================
 
-function getMassRatio(massObj) {
-  if (!massObj) return 'N/A';
-  const kg = massObj.massValue * Math.pow(10, massObj.massExponent);
-  return (kg / EARTH_MASS_KG).toFixed(3);
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
 }
 
-function getPlanetTypeStyle(type) {
-  switch (type) {
-    case 'Terrestrial': return 'bg-orange-500/50 text-orange-200';
-    case 'Gas Giant':   return 'bg-purple-500/50 text-purple-200';
-    case 'Ice Giant':   return 'bg-cyan-500/50 text-cyan-200';
-    default:            return 'bg-slate-500/50 text-slate-200';
-  }
-}
-
-function formatOrbitalPeriod(days) {
-  if (!days) return 'N/A';
-  const d = Math.abs(days);
-  return d >= 365 ? `${(d / 365.25).toFixed(1)} years` : `${d.toFixed(0)} days`;
-}
-
-function getStatusBadge(statusName) {
-  if (!statusName) return { cls: 'bg-slate-500/20 text-slate-400 border border-slate-500/30', label: 'Unknown' };
-  const s = statusName.toLowerCase();
-  if (s === 'go' || s.includes('go for'))
-    return { cls: 'bg-green-500/20 text-green-400 border border-green-500/30', label: statusName };
-  if (s.includes('success'))
-    return { cls: 'bg-blue-500/20 text-blue-400 border border-blue-500/30', label: statusName };
-  if (s.includes('hold') || s.includes('tbd') || s.includes('tbc') || s.includes('to be'))
-    return { cls: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30', label: statusName };
-  if (s.includes('fail') || s.includes('partial'))
-    return { cls: 'bg-red-500/20 text-red-400 border border-red-500/30', label: statusName };
-  return { cls: 'bg-slate-500/20 text-slate-400 border border-slate-500/30', label: statusName };
+function setHTML(id, html) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = html;
 }
 
 // =============================================================================
@@ -164,7 +208,9 @@ function initNavigation() {
 
   function showSection(sectionId) {
     sections.forEach(sec =>
-      sec.id === sectionId ? sec.classList.remove('hidden') : sec.classList.add('hidden')
+      sec.id === sectionId
+        ? sec.classList.remove('hidden')
+        : sec.classList.add('hidden')
     );
     navLinks.forEach(link => {
       if (link.dataset.section === sectionId) {
@@ -184,7 +230,10 @@ function initNavigation() {
   }
 
   navLinks.forEach(link =>
-    link.addEventListener('click', e => { e.preventDefault(); showSection(link.dataset.section); })
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      showSection(link.dataset.section);
+    })
   );
 
   showSection('today-in-space');
@@ -247,8 +296,7 @@ async function fetchAPOD(date = null) {
 }
 
 function renderAPOD(data) {
-  if (document.getElementById('apod-loading'))
-    document.getElementById('apod-loading').classList.add('hidden');
+  document.getElementById('apod-loading')?.classList.add('hidden');
 
   const container = document.getElementById('apod-image-container');
   const imgEl     = document.getElementById('apod-image');
@@ -267,19 +315,21 @@ function renderAPOD(data) {
     container.querySelector('iframe')?.remove();
     if (imgEl) {
       imgEl.src = data.hdurl || data.url;
-      imgEl.alt = data.title;
+      imgEl.alt = data.title || 'APOD';
       imgEl.classList.remove('hidden');
     }
   }
 
   setText('apod-title',       data.title || 'Astronomy Picture of the Day');
   setText('apod-explanation', data.explanation || '');
-  setText('apod-date-detail', `\u{1F4C5} ${data.date}`);
   setText('apod-date-info',   data.date);
   setText('apod-media-type',  data.media_type === 'video' ? 'Video' : 'Image');
 
   const dateEl = document.getElementById('apod-date');
   if (dateEl) dateEl.textContent = `Astronomy Picture of the Day — ${data.date}`;
+
+  const dateDetailEl = document.getElementById('apod-date-detail');
+  if (dateDetailEl) dateDetailEl.innerHTML = `<i class="far fa-calendar mr-2"></i>${data.date}`;
 
   const copyEl = document.getElementById('apod-copyright');
   if (copyEl) {
@@ -297,7 +347,7 @@ function updateDatePickerDisplay(dateStr) {
   if (!inputEl) return;
   inputEl.value = dateStr;
 
-  // The .date-input-wrapper CSS ::after reads the data-date attribute for visible text
+  // The .date-input-wrapper CSS ::after pseudo-element reads the data-date attribute
   const wrapper = inputEl.closest('.date-input-wrapper');
   if (wrapper && dateStr) {
     const label = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
@@ -399,7 +449,9 @@ function renderFeaturedLaunch(launch) {
   }
 
   const launchTimeStr = launch.net
-    ? new Date(launch.net).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })
+    ? new Date(launch.net).toLocaleTimeString('en-US', {
+        hour: '2-digit', minute: '2-digit', timeZoneName: 'short',
+      })
     : 'TBD';
 
   featuredEl.innerHTML = `
@@ -412,7 +464,7 @@ function renderFeaturedLaunch(launch) {
               <span class="px-4 py-1.5 bg-blue-500/20 text-blue-400 rounded-full text-sm font-semibold flex items-center gap-2">
                 <i class="fas fa-star"></i> Featured Launch
               </span>
-              <span class="px-4 py-1.5 ${badge.cls} rounded-full text-sm font-semibold">${badge.label}</span>
+              <span class="px-4 py-1.5 rounded-full text-sm font-semibold" style="${badge.style}">${badge.label}</span>
             </div>
             <h3 class="text-3xl font-bold mb-3 leading-tight">${missionName}</h3>
             <div class="flex flex-col xl:flex-row xl:items-center gap-4 mb-6 text-slate-400">
@@ -483,7 +535,7 @@ function renderLaunchGrid(launches) {
                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                onerror="this.onerror=null;this.src='./images/earth.png';" />
           <div class="absolute top-3 right-3">
-            <span class="px-3 py-1 ${badge.cls} backdrop-blur-sm rounded-full text-xs font-semibold">${badge.label}</span>
+            <span class="px-3 py-1 rounded-full text-xs font-semibold" style="${badge.style}">${badge.label}</span>
           </div>
         </div>
         <div class="p-5">
@@ -533,13 +585,26 @@ async function fetchPlanets() {
   try {
     const res = await fetch(CONFIG.PLANETS_URL);
     if (!res.ok) throw new Error(`Solar System API returned HTTP ${res.status}`);
-    const data = await res.json();
+    const json = await res.json();
 
-    // Keep only the 8 main planets (filter out moons and dwarf planets)
-    const planets = data.filter(body =>
-      PLANET_ORDER.includes(body.englishName) && !body.aroundPlanet
+    // FIX: API returns { "bodies": [...] }, NOT a plain array.
+    // Support both shapes for robustness.
+    const bodyList = Array.isArray(json)
+      ? json
+      : (json.bodies || json.data || json.planets || []);
+
+    if (!bodyList.length) throw new Error('API returned an empty body list');
+
+    // Keep only the 8 recognised planets
+    const planets = bodyList.filter(body =>
+      body &&
+      PLANET_ORDER.includes(body.englishName) &&
+      !body.aroundPlanet   // null for all 8 main planets
     );
 
+    if (!planets.length) throw new Error('No matching planet data found in API response');
+
+    // Sort by distance from the Sun
     planets.sort((a, b) => (a.semimajorAxis || 0) - (b.semimajorAxis || 0));
     planetsData = planets;
 
@@ -550,7 +615,7 @@ async function fetchPlanets() {
     const mercury = planets.find(p => p.englishName === 'Mercury') || planets[0];
     if (mercury) renderPlanetDetail(mercury);
 
-    console.log(`Planets loaded: ${planets.length} bodies`);
+    console.log(`Planets loaded: ${planets.length}/8 bodies from API`);
   } catch (err) {
     console.error('Planets fetch failed:', err);
     const errHtml = `
@@ -560,7 +625,8 @@ async function fetchPlanets() {
         <p class="text-slate-400 text-sm">${err.message}</p>
       </div>`;
     if (gridEl)  gridEl.innerHTML  = errHtml;
-    if (tableEl) tableEl.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">Failed to load planet data</td></tr>`;
+    if (tableEl) tableEl.innerHTML =
+      `<tr><td colspan="7" class="text-center py-8 text-slate-400">Failed to load planet data — ${err.message}</td></tr>`;
   }
 }
 
@@ -568,6 +634,7 @@ function renderPlanetsGrid(planets) {
   const gridEl = document.getElementById('planets-grid');
   if (!gridEl) return;
 
+  // Render in canonical Solar System order
   const ordered = PLANET_ORDER
     .map(name => planets.find(p => p.englishName === name))
     .filter(Boolean);
@@ -581,9 +648,8 @@ function renderPlanetsGrid(planets) {
     return `
       <div class="planet-card bg-slate-800/50 border border-slate-700 rounded-2xl p-4 transition-all cursor-pointer group"
            data-planet="${name}"
-           style="--planet-color:${color}"
-           onmouseover="this.style.borderColor='${color}80'"
-           onmouseout="this.style.borderColor='#334155'">
+           onmouseover="this.style.borderColor='${color}90'"
+           onmouseout="this.style.borderColor=''">
         <div class="relative mb-3 h-24 flex items-center justify-center">
           <img class="w-20 h-20 object-contain group-hover:scale-110 transition-transform"
                src="${imgPath}" alt="${name}"
@@ -594,14 +660,17 @@ function renderPlanetsGrid(planets) {
       </div>`;
   }).join('');
 
-  // Click → update detail panel
+  // Wire up click → detail panel
   gridEl.querySelectorAll('.planet-card').forEach(card => {
     card.addEventListener('click', () => {
       const planet = planetsData.find(p => p.englishName === card.dataset.planet);
       if (!planet) return;
       renderPlanetDetail(planet);
-      // Highlight active card
-      gridEl.querySelectorAll('.planet-card').forEach(c => { c.style.borderColor = '#334155'; });
+
+      // Highlight the selected card
+      gridEl.querySelectorAll('.planet-card').forEach(c => {
+        c.style.borderColor = '';
+      });
       card.style.borderColor = PLANET_COLORS[card.dataset.planet] || '#3b82f6';
     });
   });
@@ -612,9 +681,9 @@ function renderPlanetDetail(planet) {
 
   const imgEl = document.getElementById('planet-detail-image');
   if (imgEl) {
-    imgEl.src = getPlanetImage(name);
-    imgEl.alt = name;
-    imgEl.onerror = () => { imgEl.src = './images/earth.png'; };
+    imgEl.src      = getPlanetImage(name);
+    imgEl.alt      = name;
+    imgEl.onerror  = () => { imgEl.src = './images/earth.png'; };
   }
 
   setText('planet-detail-name',        name);
@@ -626,9 +695,9 @@ function renderPlanetDetail(planet) {
   setText('planet-distance', planet.semimajorAxis
     ? `${formatNumber(planet.semimajorAxis)} km (${kmToAU(planet.semimajorAxis)} AU)`
     : 'N/A');
-  setText('planet-radius',  planet.meanRadius  ? `${formatNumber(planet.meanRadius)} km`  : 'N/A');
-  setText('planet-density', planet.density     ? `${planet.density} g/cm³`           : 'N/A');
-  setHTML('planet-mass',    planet.mass        ? formatMass(planet.mass)                   : 'N/A');
+  setText('planet-radius',  planet.meanRadius ? `${formatNumber(planet.meanRadius)} km`  : 'N/A');
+  setText('planet-density', planet.density    ? `${planet.density} g/cm³`                : 'N/A');
+  setHTML('planet-mass',    planet.mass       ? formatMass(planet.mass)                   : 'N/A');
 
   setText('planet-orbital-period', planet.sideralOrbit
     ? `${Math.abs(planet.sideralOrbit).toLocaleString()} days`
@@ -637,7 +706,7 @@ function renderPlanetDetail(planet) {
     ? `${Math.abs(planet.sideralRotation).toFixed(2)} hours`
     : 'N/A');
   setText('planet-moons',   planet.moons ? String(planet.moons.length) : '0');
-  setText('planet-gravity', planet.gravity ? `${planet.gravity} m/s²` : 'N/A');
+  setText('planet-gravity', planet.gravity ? `${planet.gravity} m/s²`  : 'N/A');
 
   setHTML('planet-volume', planet.vol
     ? `${planet.vol.volValue} &times; 10<sup>${planet.vol.volExponent}</sup> km³`
@@ -645,7 +714,7 @@ function renderPlanetDetail(planet) {
 
   setText('planet-perihelion',   planet.perihelion   ? `${formatNumber(planet.perihelion)} km`   : 'N/A');
   setText('planet-aphelion',     planet.aphelion     ? `${formatNumber(planet.aphelion)} km`     : 'N/A');
-  setText('planet-eccentricity', planet.eccentricity != null ? planet.eccentricity.toFixed(4)   : 'N/A');
+  setText('planet-eccentricity', planet.eccentricity != null ? planet.eccentricity.toFixed(4)    : 'N/A');
   setText('planet-inclination',  planet.inclination  != null ? `${planet.inclination.toFixed(2)}°`  : 'N/A');
   setText('planet-axial-tilt',   planet.axialTilt    != null ? `${planet.axialTilt.toFixed(2)}°`    : 'N/A');
   setText('planet-temp', planet.avgTemp != null
@@ -677,12 +746,15 @@ function renderPlanetTable(planets) {
     const name    = planet.englishName;
     const color   = PLANET_COLORS[name] || '#888888';
     const au      = planet.semimajorAxis ? kmToAU(planet.semimajorAxis) : 'N/A';
-    const diam    = planet.meanRadius ? formatNumber(planet.meanRadius * 2) : 'N/A';
-    const massRel = planet.mass ? getMassRatio(planet.mass) : 'N/A';
-    const period  = planet.sideralOrbit ? formatOrbitalPeriod(planet.sideralOrbit) : 'N/A';
-    const moons   = planet.moons ? planet.moons.length : 0;
+    const diam    = planet.meanRadius    ? formatNumber(planet.meanRadius * 2) : 'N/A';
+    const massRel = planet.mass          ? getMassRatio(planet.mass)            : 'N/A';
+    const period  = planet.sideralOrbit  ? formatOrbitalPeriod(planet.sideralOrbit) : 'N/A';
+    const moons   = planet.moons         ? planet.moons.length                 : 0;
     const type    = getPlanetType(name);
     const rowBg   = name === 'Earth' ? 'bg-blue-500/5' : '';
+
+    // Inline style for type pill — avoids uncompiled Tailwind opacity variants
+    const pillStyle = getPlanetTypePillStyle(type);
 
     return `
       <tr class="hover:bg-slate-800/30 transition-colors ${rowBg}">
@@ -698,28 +770,14 @@ function renderPlanetTable(planets) {
         <td class="px-4 md:px-6 py-3 md:py-4 text-slate-300 text-sm md:text-base whitespace-nowrap">${period}</td>
         <td class="px-4 md:px-6 py-3 md:py-4 text-slate-300 text-sm md:text-base whitespace-nowrap">${moons}</td>
         <td class="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap">
-          <span class="px-2 py-1 rounded text-xs ${getPlanetTypeStyle(type)}">${type}</span>
+          <span class="px-2 py-1 rounded text-xs font-medium" style="${pillStyle}">${type}</span>
         </td>
       </tr>`;
   }).join('');
 }
 
 // =============================================================================
-// DOM HELPERS
-// =============================================================================
-
-function setText(id, value) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = value;
-}
-
-function setHTML(id, html) {
-  const el = document.getElementById(id);
-  if (el) el.innerHTML = html;
-}
-
-// =============================================================================
-// BOOTSTRAP — fires after the DOM is ready
+// BOOTSTRAP
 // =============================================================================
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -729,10 +787,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   initSidebarToggle();
   initAPODControls();
 
-  // Prime the date-picker with today's date
+  // Prime the date-picker with today's date before the API responds
   updateDatePickerDisplay(today());
 
-  // Load all three data sources in parallel; failures are isolated
+  // Load all three data sources in parallel; a single failure is isolated
   const [apodResult, launchesResult, planetsResult] = await Promise.allSettled([
     fetchAPOD(),
     fetchLaunches(),
